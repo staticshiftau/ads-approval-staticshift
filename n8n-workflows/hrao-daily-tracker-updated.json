@@ -1,0 +1,556 @@
+{
+  "name": "Ads Performance Daily Tracker FINAL | HRAO - Enhanced",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 13 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Daily 12am AEDT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1152,
+        144
+      ],
+      "id": "22616532-886f-4fb9-91d4-7126db501bdb"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Client configuration\nconst config = {\n  clientName: 'HR Advice Online',\n  fbAdAccountId: 'act_1504596024142925',\n  sheetId: '1WKcbEPkbO-ljR5xJHURWMdg1ip6MiNwFsdmQK52hp6g',\n  slackChannelId: 'C095KT33NNN'\n};\n\n// Get YESTERDAY's date (complete 24-hour period)\nconst yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst dateStr = yesterday.toISOString().split('T')[0];\n\n// Get date 5 days ago for 4-day average (yesterday - 4 days)\nconst fiveDaysAgo = new Date();\nfiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);\nconst startDateStr = fiveDaysAgo.toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    ...config,\n    dateToFetch: dateStr,\n    avgStartDate: startDateStr\n  }\n}];"
+      },
+      "name": "Load Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        144
+      ],
+      "id": "0dbe418b-726a-4b53-a94f-e9b485389693"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v24.0/{{ $json.fbAdAccountId }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "EAAcEdar4GN8BP5fMnXintsaoqxjWbXgCehTNqkizK7txRV2bqV8OWV2rpwuK5fteu2Eq1xobHWDEWTYN1EyezhhG8i2SKkQVubaQ47tm03ShdFc4NPgSTmzZBt4edMNrirfqKLifm2nMEuSnGNJQHgHhfU6IPR45pi5KSC0UcBtHdHNQpNDi9RMO4vbQfm0lah1LrBg7VNifsSgZDZD"
+            },
+            {
+              "name": "fields",
+              "value": "ad_id,campaign_name,ad_name,adset_name,spend,impressions,clicks,actions,cpm,cpc,cost_per_inline_link_click"
+            },
+            {
+              "name": "level",
+              "value": "ad"
+            },
+            {
+              "name": "date_preset",
+              "value": "yesterday"
+            },
+            {
+              "name": "limit",
+              "value": "500"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fetch Yesterday's Ad Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -736,
+        144
+      ],
+      "id": "5501c74a-d4da-459e-a2d7-2662f05610f3"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v24.0/{{ $json.fbAdAccountId }}/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "EAAcEdar4GN8BP5fMnXintsaoqxjWbXgCehTNqkizK7txRV2bqV8OWV2rpwuK5fteu2Eq1xobHWDEWTYN1EyezhhG8i2SKkQVubaQ47tm03ShdFc4NPgSTmzZBt4edMNrirfqKLifm2nMEuSnGNJQHgHhfU6IPR45pi5KSC0UcBtHdHNQpNDi9RMO4vbQfm0lah1LrBg7VNifsSgZDZD"
+            },
+            {
+              "name": "fields",
+              "value": "spend,impressions,clicks,actions,cost_per_inline_link_click"
+            },
+            {
+              "name": "level",
+              "value": "account"
+            },
+            {
+              "name": "time_range",
+              "value": "={{ JSON.stringify({since: $('Load Config').first().json.avgStartDate, until: $('Load Config').first().json.dateToFetch}) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fetch 4-Day Average Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -736,
+        336
+      ],
+      "id": "fetch-4day-avg"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v24.0/{{ $json.fbAdAccountId }}/ads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "access_token",
+              "value": "EAAcEdar4GN8BP5fMnXintsaoqxjWbXgCehTNqkizK7txRV2bqV8OWV2rpwuK5fteu2Eq1xobHWDEWTYN1EyezhhG8i2SKkQVubaQ47tm03ShdFc4NPgSTmzZBt4edMNrirfqKLifm2nMEuSnGNJQHgHhfU6IPR45pi5KSC0UcBtHdHNQpNDi9RMO4vbQfm0lah1LrBg7VNifsSgZDZD"
+            },
+            {
+              "name": "fields",
+              "value": "id,name,status"
+            },
+            {
+              "name": "limit",
+              "value": "500"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fetch Ad Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -736,
+        528
+      ],
+      "id": "06ddb027-d9a7-4e2c-ac4c-fc111d448113"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from all API calls\nconst insightsData = $('Fetch Yesterday\\'s Ad Insights').all();\nconst avgData = $('Fetch 4-Day Average Data').all();\nconst config = $('Load Config').first().json;\n\n// Try to get status data\nlet statusData = [];\ntry {\n  statusData = $('Fetch Ad Status').all();\n} catch (error) {\n  console.log('Fetch Ad Status node not available, continuing without status data');\n}\n\n// Create status lookup by ad ID\nconst statusMap = {};\nif (statusData[0]?.json?.data) {\n  statusData[0].json.data.forEach(ad => {\n    statusMap[ad.id] = ad.status;\n  });\n}\n\n// Calculate 4-day averages\nlet avg4DayStats = {\n  spend: 0,\n  leads: 0,\n  impressions: 0,\n  clicks: 0,\n  linkClicks: 0,\n  cpl: 'N/A',\n  cpc: '0.00',\n  costPerLinkClick: '0.00'\n};\n\nif (avgData[0]?.json?.data?.[0]) {\n  const data = avgData[0].json.data[0];\n  const totalSpend = parseFloat(data.spend || 0);\n  const totalImpressions = parseInt(data.impressions || 0);\n  const totalClicks = parseInt(data.clicks || 0);\n  \n  // Extract link clicks and leads from 4-day data\n  let totalLinkClicks = 0;\n  let totalLeads = 0;\n  \n  if (data.actions) {\n    const linkClickAction = data.actions.find(a => a.action_type === 'link_click');\n    totalLinkClicks = linkClickAction ? parseInt(linkClickAction.value) : 0;\n    \n    const leadAction = data.actions.find(action => \n      action.action_type === 'lead' || \n      action.action_type === 'offsite_conversion.fb_pixel_lead' ||\n      action.action_type === 'omni_complete_registration' ||\n      action.action_type === 'onsite_conversion.lead_grouped' ||\n      action.action_type === 'leadgen_grouped'\n    );\n    totalLeads = leadAction ? parseInt(leadAction.value) : 0;\n  }\n  \n  // Calculate 4-day averages (divide by 4 days)\n  avg4DayStats = {\n    spend: (totalSpend / 4).toFixed(2),\n    leads: Math.round(totalLeads / 4),\n    impressions: Math.round(totalImpressions / 4),\n    clicks: Math.round(totalClicks / 4),\n    linkClicks: Math.round(totalLinkClicks / 4),\n    cpl: totalLeads > 0 ? (totalSpend / totalLeads).toFixed(2) : 'N/A',\n    cpc: totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : '0.00',\n    costPerLinkClick: totalLinkClicks > 0 ? (totalSpend / totalLinkClicks).toFixed(2) : '0.00'\n  };\n}\n\n// Helper function to format numbers with commas\nfunction formatNumber(num) {\n  return num.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\n}\n\n// Process insights data for yesterday\nconst processedAds = [];\nlet totalSpend = 0;\nlet totalLeads = 0;\nlet totalImpressions = 0;\nlet totalClicks = 0;\nlet totalLinkClicks = 0;\n\nif (insightsData[0]?.json?.data) {\n  insightsData[0].json.data.forEach(ad => {\n    // Extract leads from actions array\n    let leads = 0;\n    let linkClicks = 0;\n    \n    if (ad.actions) {\n      // Get leads\n      const leadAction = ad.actions.find(action => \n        action.action_type === 'lead' || \n        action.action_type === 'offsite_conversion.fb_pixel_lead' ||\n        action.action_type === 'omni_complete_registration' ||\n        action.action_type === 'onsite_conversion.lead_grouped' ||\n        action.action_type === 'leadgen_grouped'\n      );\n      leads = leadAction ? parseInt(leadAction.value) : 0;\n      \n      // Get link clicks\n      const linkClickAction = ad.actions.find(a => a.action_type === 'link_click');\n      linkClicks = linkClickAction ? parseInt(linkClickAction.value) : 0;\n    }\n\n    const spend = parseFloat(ad.spend || 0);\n    const impressions = parseInt(ad.impressions || 0);\n    const clicks = parseInt(ad.clicks || 0);\n    \n    // Calculate metrics\n    const cpm = impressions > 0 ? (spend / impressions * 1000).toFixed(2) : '0.00';\n    const cpc = clicks > 0 ? (spend / clicks).toFixed(2) : '0.00';\n    const costPerLinkClick = linkClicks > 0 ? (spend / linkClicks).toFixed(2) : (ad.cost_per_inline_link_click || '0.00');\n    const cpl = leads > 0 ? (spend / leads).toFixed(2) : '0.00';\n\n    processedAds.push({\n      date: config.dateToFetch,\n      adId: ad.ad_id,\n      campaignName: ad.campaign_name || 'Unknown Campaign',\n      adsetName: ad.adset_name || 'Unknown Ad Set',\n      adName: ad.ad_name || 'Unknown Ad',\n      status: statusMap[ad.ad_id] || 'UNKNOWN',\n      spend: spend.toFixed(2),\n      leads: leads,\n      impressions: impressions,\n      clicks: clicks,\n      linkClicks: linkClicks,\n      cpm: cpm,\n      cpc: cpc,\n      costPerLinkClick: costPerLinkClick,\n      cpl: cpl\n    });\n\n    totalSpend += spend;\n    totalLeads += leads;\n    totalImpressions += impressions;\n    totalClicks += clicks;\n    totalLinkClicks += linkClicks;\n  });\n}\n\n// Sort by spend (highest first)\nprocessedAds.sort((a, b) => parseFloat(b.spend) - parseFloat(a.spend));\n\n// Build Top Performers section with Cost Per Link Click\nconst topPerformers = processedAds.slice(0, 3).map((ad, i) => {\n  return `${i+1}. [${ad.adsetName}] ${ad.adName}\\n   :moneybag: $${ad.spend} | :busts_in_silhouette: ${ad.leads} leads | ${formatNumber(ad.impressions)} impr | ${ad.linkClicks} link clicks | Cost/Link: $${ad.costPerLinkClick} | CPL: $${ad.cpl}`;\n}).join('\\n\\n');\n\n// Build Zero Lead Alerts section\nconst zeroLeadAds = processedAds.filter(ad => ad.leads === 0 && parseFloat(ad.spend) > 10);\nlet zeroLeadSection = '';\nif (zeroLeadAds.length > 0) {\n  zeroLeadSection = '\\n\\n*⚠️ Zero Lead Alerts (Spend > $10):*\\n' + \n    zeroLeadAds.map(ad => {\n      return `• [${ad.adsetName}] ${ad.adName}\\n   💸 Spent $${ad.spend}, 0 leads, ${formatNumber(ad.impressions)} impressions, ${ad.linkClicks} link clicks, Cost/Link: $${ad.costPerLinkClick}`;\n    }).join('\\n');\n}\n\n// Calculate yesterday's averages\nconst avgCPM = totalImpressions > 0 ? (totalSpend / totalImpressions * 1000).toFixed(2) : '0.00';\nconst avgCPC = totalClicks > 0 ? (totalSpend / totalClicks).toFixed(2) : '0.00';\nconst avgCostPerLinkClick = totalLinkClicks > 0 ? (totalSpend / totalLinkClicks).toFixed(2) : '0.00';\nconst avgCPL = totalLeads > 0 ? (totalSpend / totalLeads).toFixed(2) : 'N/A';\n\nreturn [{\n  json: {\n    clientName: config.clientName,\n    sheetId: config.sheetId,\n    slackChannelId: config.slackChannelId,\n    dateProcessed: config.dateToFetch,\n    ads: processedAds,\n    totalAds: processedAds.length,\n    totalSpend: totalSpend.toFixed(2),\n    totalLeads: totalLeads,\n    totalImpressions: formatNumber(totalImpressions),\n    totalClicks: totalClicks,\n    totalLinkClicks: totalLinkClicks,\n    avgCPM: avgCPM,\n    avgCPC: avgCPC,\n    avgCostPerLinkClick: avgCostPerLinkClick,\n    avgCPL: avgCPL,\n    avg4Day: avg4DayStats,\n    topPerformersText: topPerformers,\n    zeroLeadText: zeroLeadSection\n  }\n}];"
+      },
+      "name": "Process Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        144
+      ],
+      "id": "dff75c49-cbb8-4a53-aeb8-b3f3e66ad06f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.ads.length }}",
+              "operation": "largerEqual",
+              "value2": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Has Data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        144
+      ],
+      "id": "a6bcbfa2-ba7e-417a-b0c4-e7668094657f"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "=C096MFMFDHB",
+          "mode": "id"
+        },
+        "text": "=:bar_chart: *DAILY ADS PERFORMANCE UPDATE*\n\n*Client:* {{ $('Process Data').first().json.clientName }}\n*Date:* {{ $('Process Data').first().json.dateProcessed }}\n\n:chart_with_upwards_trend: *Yesterday's Performance*\n• Active Ads: {{ $('Process Data').first().json.totalAds }}\n• Spend: ${{ $('Process Data').first().json.totalSpend }}\n• Leads: {{ $('Process Data').first().json.totalLeads }}\n• Impressions: {{ $('Process Data').first().json.totalImpressions }}\n• Link Clicks: {{ $('Process Data').first().json.totalLinkClicks }}\n• Avg Cost/Link Click: ${{ $('Process Data').first().json.avgCostPerLinkClick }}\n• Avg CPL: ${{ $('Process Data').first().json.avgCPL }}\n\n:calendar: *4-Day Average Comparison*\n• Avg Daily Spend: ${{ $('Process Data').first().json.avg4Day.spend }}\n• Avg Daily Leads: {{ $('Process Data').first().json.avg4Day.leads }}\n• Avg Daily Impressions: {{ $('Process Data').first().json.avg4Day.impressions }}\n• Avg Link Clicks: {{ $('Process Data').first().json.avg4Day.linkClicks }}\n• Avg Cost/Link Click: ${{ $('Process Data').first().json.avg4Day.costPerLinkClick }}\n• Avg CPL: ${{ $('Process Data').first().json.avg4Day.cpl }}\n\n*:trophy: Top Ad Sets by Spend (Yesterday)*\n\n{{ $('Process Data').first().json.topPerformersText }}\n\n{{ $('Process Data').first().json.zeroLeadText }}\n\n:white_check_mark: *Ad Performance Log updated*\n<https://docs.google.com/spreadsheets/d/{{ $('Process Data').first().json.sheetId }}|:page_facing_up: View Sheet>",
+        "otherOptions": {}
+      },
+      "name": "Send Slack Report",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        160
+      ],
+      "id": "e36e75dc-bcb5-435b-b3e9-de958efc0ead",
+      "webhookId": "1dbd04fd-03f7-4752-b149-9320e8163d69",
+      "credentials": {
+        "slackApi": {
+          "id": "HBgymDl7Jz27PEm1",
+          "name": "Slack account |Static Shift"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "=C096MFMFDHB",
+          "mode": "id"
+        },
+        "text": "=⚠️ *ADS TRACKER WARNING*\n\n*Client:* {{ $json.clientName }}\n*Date:* {{ $json.dateProcessed }}\n\nNo ad data found for yesterday. This could mean:\n• No ads were active\n• Facebook API returned no data\n• Access token may need refresh",
+        "otherOptions": {}
+      },
+      "name": "Send Warning",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        32,
+        336
+      ],
+      "id": "279cb705-3aaa-4eac-aa5b-f3d6315bad7f",
+      "webhookId": "e2037c99-b264-415b-8306-74385a80605f",
+      "credentials": {
+        "slackApi": {
+          "id": "HBgymDl7Jz27PEm1",
+          "name": "Slack account |Static Shift"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Format all ads into sheet rows\nconst rows = data.ads.map(ad => ({\n  'Date': ad.date,\n  'Campaign Name': ad.campaignName,\n  'Ad Set Name': ad.adsetName,\n  'Ad Name': ad.adName,\n  'Status': ad.status,\n  'Spend': parseFloat(ad.spend),\n  'Leads': ad.leads,\n  'Impressions': ad.impressions,\n  'Clicks': ad.clicks,\n  'Link Clicks': ad.linkClicks,\n  'CPM': parseFloat(ad.cpm),\n  'CPC': parseFloat(ad.cpc),\n  'Cost Per Link Click': parseFloat(ad.costPerLinkClick),\n  'CPL': parseFloat(ad.cpl) || 0\n}));\n\nreturn rows.map(row => ({ json: row }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        0
+      ],
+      "id": "86d7d19a-17d6-4746-ab64-5dd3b0c6fa97",
+      "name": "Prepare all nodes"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1WKcbEPkbO-ljR5xJHURWMdg1ip6MiNwFsdmQK52hp6g",
+          "mode": "list",
+          "cachedResultName": "Meta Ads Tracking Sheet | HR Advice Online",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WKcbEPkbO-ljR5xJHURWMdg1ip6MiNwFsdmQK52hp6g/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 667879484,
+          "mode": "list",
+          "cachedResultName": "Ad Performance Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WKcbEPkbO-ljR5xJHURWMdg1ip6MiNwFsdmQK52hp6g/edit#gid=667879484"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date  ": "={{ $json.Date }}",
+            "Campaign Name": "={{ $json[\"Campaign Name\"] }}",
+            "Ad Set Name": "={{ $json[\"Ad Set Name\"] }}",
+            "Ad Name": "={{ $json[\"Ad Name\"] }}",
+            "Status": "={{ $json.Status }}",
+            "Spend": "={{ $json.Spend }}",
+            "Leads": "={{ $json.Leads }}",
+            "Impressions": "={{ $json.Impressions }}",
+            "Clicks": "={{ $json.Clicks }}",
+            "Link Clicks": "={{ $json[\"Link Clicks\"] }}",
+            "CPM": "={{ $json.CPM }}",
+            "CPC": "={{ $json.CPC }}",
+            "Cost Per Link Click": "={{ $json[\"Cost Per Link Click\"] }}",
+            "CPL": "={{ $json.CPL }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date  ",
+              "displayName": "Date  ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Campaign Name",
+              "displayName": "Campaign Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ad Set Name",
+              "displayName": "Ad Set Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ad Name",
+              "displayName": "Ad Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Spend",
+              "displayName": "Spend",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Leads",
+              "displayName": "Leads",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Impressions",
+              "displayName": "Impressions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Clicks",
+              "displayName": "Clicks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link Clicks",
+              "displayName": "Link Clicks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CPM",
+              "displayName": "CPM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CPC",
+              "displayName": "CPC",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cost Per Link Click",
+              "displayName": "Cost Per Link Click",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CPL",
+              "displayName": "CPL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "1d24009b-eb39-47fa-968c-434ba076d5d8",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "P8he4u8JbXd5X78e",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Daily 12am AEDT": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Yesterday's Ad Insights",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch 4-Day Average Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Ad Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Yesterday's Ad Insights": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch 4-Day Average Data": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Ad Status": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data": {
+      "main": [
+        [
+          {
+            "node": "Has Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Data?": {
+      "main": [
+        [
+          {
+            "node": "Prepare all nodes",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare all nodes": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "enhanced-with-link-clicks-and-4day-avg",
+  "meta": {
+    "instanceId": "89f97124bce97bfc128f3e8abbf22abf9fa6d7e6c6d5cd856ccf30e1fe2c2d2e"
+  },
+  "tags": [
+    {
+      "id": "v7yGe2LsJUOogLnb",
+      "name": "Static Shift"
+    }
+  ]
+}
