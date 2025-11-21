@@ -39,14 +39,19 @@ Do you have Business Manager access to the client's page/ad account?
 2. **Select your Meta App:** "Static Shift Marketing API" (or your app)
 3. **Click:** "Generate Access Token"
 4. **Log in** as someone with Ad Account access
-5. **Grant permissions:** Make sure `ads_read` is checked
-6. **Test with this query:**
+5. **Grant permissions:** Make sure `ads_read` and `ads_management` are checked
+6. **⚠️ CRITICAL: Extend token expiration:**
+   - Click the "i" (info) icon next to the token OR
+   - Go to https://developers.facebook.com/tools/debug/accesstoken/
+   - Paste your token and click "Extend Access Token"
+   - Set to **60 days** or **Never** (default is only 1-2 hours!)
+7. **Test with this query:**
    ```
    act_XXXXXXXXXXXXX/ads?fields=id,name,status&limit=3
    ```
    (Replace `act_XXX` with client's Ad Account ID)
-7. **If it works:** Copy the token from "Access Token" field
-8. **Save it as:** "Client Name - Ad Account Token"
+8. **If it works:** Copy the EXTENDED token from "Access Token" field
+9. **Save it as:** "Client Name - Ad Account Token"
 
 ✅ **Done! That's Token 1 of 2.**
 
