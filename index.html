@@ -623,39 +623,83 @@
             };
 
             const syncActionedAdsWithSheet = (allRows, clientInfo) => {
-                const stored = localStorage.getItem('actionedAds');
-                if (!stored) return;
-
                 try {
-                    const actionedAds = JSON.parse(stored);
-                    let hasChanges = false;
+                    const stored = localStorage.getItem('actionedAds');
+                    const existingActionedAds = stored ? JSON.parse(stored) : { approved: [], needsEdit: [], rejected: [] };
 
-                    // Check each actioned ad against current sheet status
-                    ['approved', 'needsEdit', 'rejected'].forEach(category => {
-                        actionedAds[category] = actionedAds[category].filter(ad => {
-                            const rowIndex = ad.rowIndex - 2; // Convert back to array index
-                            if (rowIndex >= 0 && rowIndex < allRows.length) {
-                                const currentStatus = allRows[rowIndex][CONFIG.ADS_COLUMNS.STATUS] || '';
-                                const isStillActioned = currentStatus.toLowerCase() !== 'for review' && 
-                                                       currentStatus.toLowerCase() !== 'pending' && 
-                                                       currentStatus !== '';
-                                
-                                if (!isStillActioned) {
-                                    // Ad was changed back to "For Review" in sheet - remove from localStorage
-                                    hasChanges = true;
-                                    console.log(`Detected manual change: Ad ${ad.adName} (row ${ad.rowIndex}) changed back to For Review`);
-                                    return false;
-                                }
-                            }
-                            return true;
-                        });
+                    // Create maps of existing actioned ads by rowIndex for quick lookup
+                    const existingMaps = {
+                        approved: new Map(existingActionedAds.approved.map(ad => [ad.rowIndex, ad])),
+                        needsEdit: new Map(existingActionedAds.needsEdit.map(ad => [ad.rowIndex, ad])),
+                        rejected: new Map(existingActionedAds.rejected.map(ad => [ad.rowIndex, ad]))
+                    };
+
+                    // Build fresh lists from sheet data
+                    const newActionedAds = { approved: [], needsEdit: [], rejected: [] };
+
+                    allRows.forEach((row, index) => {
+                        const rowIndex = index + 2;
+                        const status = (row[CONFIG.ADS_COLUMNS.STATUS] || '').toLowerCase();
+
+                        // Skip pending/for review ads
+                        if (status === 'for review' || status === 'pending' || status === '') {
+                            return;
+                        }
+
+                        // Create ad object
+                        const ad = {
+                            rowIndex: rowIndex,
+                            businessName: clientInfo.businessName,
+                            websiteUrl: clientInfo.websiteUrl,
+                            destinationUrl: clientInfo.destinationUrl,
+                            profileImage: clientInfo.profileImage,
+                            status: row[CONFIG.ADS_COLUMNS.STATUS] || '',
+                            adName: row[CONFIG.ADS_COLUMNS.AD_NAME] || '',
+                            campaignAngle: row[CONFIG.ADS_COLUMNS.CAMPAIGN_ANGLE] || '',
+                            headline: row[CONFIG.ADS_COLUMNS.HEADLINE] || '',
+                            adCopy: row[CONFIG.ADS_COLUMNS.AD_COPY] || '',
+                            creativeAsset: row[CONFIG.ADS_COLUMNS.CREATIVE_ASSETS] || '',
+                            recommendedCTA: row[CONFIG.ADS_COLUMNS.RECOMMENDED_CTA] || 'Learn More',
+                            imageText: row[CONFIG.ADS_COLUMNS.IMAGE_TEXT] || '',
+                            notes: row[CONFIG.ADS_COLUMNS.CLIENT_NOTE] || ''
+                        };
+
+                        // Check if we have existing metadata for this ad
+                        let existingAd = null;
+                        if (status === 'approved') {
+                            existingAd = existingMaps.approved.get(rowIndex);
+                        } else if (status === 'needs edit') {
+                            existingAd = existingMaps.needsEdit.get(rowIndex);
+                        } else if (status === 'rejected') {
+                            existingAd = existingMaps.rejected.get(rowIndex);
+                        }
+
+                        // Preserve action metadata if it exists
+                        if (existingAd) {
+                            ad.actionStatus = existingAd.actionStatus;
+                            ad.actionNotes = existingAd.actionNotes;
+                            ad.actionDate = existingAd.actionDate;
+                        } else {
+                            // New actioned ad from sheet (manually changed)
+                            ad.actionStatus = row[CONFIG.ADS_COLUMNS.STATUS] || '';
+                            ad.actionNotes = '';
+                            ad.actionDate = new Date().toISOString();
+                        }
+
+                        // Add to appropriate category
+                        if (status === 'approved') {
+                            newActionedAds.approved.push(ad);
+                        } else if (status === 'needs edit') {
+                            newActionedAds.needsEdit.push(ad);
+                        } else if (status === 'rejected') {
+                            newActionedAds.rejected.push(ad);
+                        }
                     });
 
-                    if (hasChanges) {
-                        localStorage.setItem('actionedAds', JSON.stringify(actionedAds));
-                        setActionedAds(actionedAds);
-                        showNotification('✓ Portal synced with sheet changes', 'success');
-                    }
+                    // Update localStorage and state
+                    localStorage.setItem('actionedAds', JSON.stringify(newActionedAds));
+                    setActionedAds(newActionedAds);
+
                 } catch (e) {
                     console.error('Error syncing actioned ads:', e);
                 }
