@@ -1,0 +1,41 @@
+# Facebook API Credentials
+credentials.json
+credentials-production.json
+credentials-backup.json
+.env
+.env.local
+.env.production
+
+# Allow template files
+!credentials-template.json
+
+# Access Tokens (never commit these!)
+*token*.txt
+*access*.txt
+
+# n8n exports with credentials
+*-with-credentials.json
+
+# Node modules (if you add any tooling)
+node_modules/
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.backup
+*.bak
+workflows-backup/
+
+# Logs
+logs/
+*.log
